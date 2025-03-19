@@ -68,4 +68,10 @@ The models to run for the task were:
 To view what models I have downloaded I ran `ersilia catalog`:
 ![Ersilia catalog command results](ersilia_catalog.png)
 
-The `ersilia fetch` command uses Docker to get the required image since it stores this data in
+The `ersilia fetch` command uses Docker to get the required image and create containers:
+
+![Ersilia model Docker containers](model_containers.png)
+
+The `fetch` command can be used to pull from various sources like s3 and DockerHub but you can also just use Docker itself to pull models you need:
+
+![Pulling models with Docker](pull_models_with_docker.png)
