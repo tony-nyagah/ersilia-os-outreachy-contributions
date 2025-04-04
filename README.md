@@ -1,19 +1,48 @@
-# Outreachy contribution period
+# Mutagenicity prediction project
 
-This repository contains a basic folder structure to be used during the Outreachy contribution period. Please make a fork to start contributing, and detail progress in the open issue. 
+This is a project created as part of contributing to the [Ersilia Open Source Initiative](https://www.ersilia.io/).
 
-## Project goals:
-- Understand how to use and interact with the Ersilia Model Hub
-- Demonstrate basic AI/ML knowledge
-- Show your Python coding skills 
-- Practice code documentation and end user documentation
+The goal is to develop a mutagenicity prediction model using the [Ersilia Model Hub](https://www.ersilia.io/model-hub) and datasets from various sources (e.g., [Therapeutics Data Commons](https://tdcommons.ai/overview)).
 
+I have chosen the [AMES mutagenicity dataset](https://tdcommons.ai/single_pred_tasks/tox#ames-mutagenicity) from Therapeutics Data Commons (TDC) because of the large size of the dataset.
+The Ames test is a widely used method to determine whether a chemical can cause mutations in DNA. This is crucial in drug development since compounds that damage DNA can lead to cancer or other severe health issues.
 
-## Structure overview
-The template repository already has pre-defined folders. Please restrict your project to using them for easy review:
-- data: folder where data needs to be stored once downloade
-- notebooks: jupyter notebooks
-- scripts: python/bash scripts necessary to run the project
-- models: folder with model checkpoints
+## Table of Contents
+[1. Dataset and task description](#dataset-and-task-description)
+[2. Data acquisition](#data-acquisition)
 
-Please modify this README to write your project documentation.
+## 1. Dataset and task description
+These are the dataset descriptions as provided by Therapeutics Data Commons (TDC):
+
+**Dataset description**: Mutagenicity means the ability of a drug to induce genetic alterations. Drugs that can cause damage to the DNA can result in cell death or other severe adverse effects. Nowadays, the most widely used assay for testing the mutagenicity of compounds is the Ames experiment which was invented by a professor named Ames. The Ames test is a short-term bacterial reverse mutation assay detecting a large number of compounds which can induce genetic damage and frameshift mutations. The dataset is aggregated from four papers.
+
+**Task description**: Binary classification. Given a drug SMILES string, predict whether it is mutagenic (1) or not mutagenic (0).
+
+## 2. Data acquisition
+
+To get data from Therapeutics Data Commons (TDC), I will use the [fetch_dataset.py](scripts/fetch_dataset.py) script.
+
+Here we pass in a dataset name and it's group and the script will download the dataset, split it into train, validation, and test sets, and save it to the data folder.
+
+List datasets available in TDC:
+```bash
+python scripts/fetch_dataset.py --list
+```
+
+Download a dataset:
+```bash
+python scripts/fetch_dataset.py --dataset_name AMES --dataset_group Tox
+```
+
+## 3. Data Featurization
+We need features to enable us create a decent prediction model. The data we downloaded looks like this so far and doesn't have much to work with:
+```
+Drug_ID,Drug,Y
+Drug 1,O=[N+]([O-])c1c2c(c3ccc4cccc5ccc1c3c45)CCCC2,1
+Drug 2,O=c1c2ccccc2c(=O)c2c1ccc1c2[nH]c2c3c(=O)c4ccccc4c(=O)c3c3[nH]c4c(ccc5c(=O)c6ccccc6c(=O)c54)c3c12,0
+Drug 3,[N-]=[N+]=CC(=O)NCC(=O)NN,1
+Drug 4,[N-]=[N+]=C1C=NC(=O)NC1=O,1
+Drug 6,CCCCN(CC(O)C1=CC(=[N+]=[N-])C(=O)C=C1)N=O,1
+```
+
+For featurization we will use variouse Ersilia models and determine which one is the best for our task.
