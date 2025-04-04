@@ -46,3 +46,15 @@ Drug 6,CCCCN(CC(O)C1=CC(=[N+]=[N-])C(=O)C=C1)N=O,1
 ```
 
 For featurization we will use variouse Ersilia models and determine which one is the best for our task.
+
+We will use the [featurization.py](scripts/featurization.py) script to featurize the dataset.
+
+Here we pass in a dataset path which we got from the `fetch_dataset.py` script, a model identifier, and a feature name and the script will featurize the dataset.
+
+Example:
+```bash
+python scripts/featurization.py --dataset AMES_train.csv --model_id eos3b5e --feature_name MolWeight
+```
+
+This will featurize the dataset and save it to the data folder.
+

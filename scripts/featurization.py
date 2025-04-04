@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import argparse
 from ersilia import ErsiliaModel
 
 # Get the absolute path to the data directory
@@ -22,20 +23,8 @@ def extract_smiles(dataset_path: str) -> tuple:
     return df, smiles_list
 
 
-def try_predict_method(model, smiles_list: list) -> list:
-    """Try to featurize using the predict method."""
-    results = model.predict(smiles_list)
-
-    # Extract values from nested lists if needed
-    if results and isinstance(results[0], list):
-        results = [r[0] if isinstance(r, list) and len(r) > 0 else r for r in results]
-
-    print("Successfully featurized using predict method")
-    return results
-
-
-def try_run_method(model, smiles_list: list) -> list:
-    """Try to featurize using the run method with file output."""
+def process_model_output(model, smiles_list: list) -> list:
+    """Process the output from an Ersilia model using the run method."""
     # Create a temporary file for the SMILES strings
     temp_smiles_file = os.path.join(data_dir, "temp_smiles.csv")
     temp_output_file = os.path.join(data_dir, "temp_output.csv")
@@ -52,29 +41,40 @@ def try_run_method(model, smiles_list: list) -> list:
         result_df = pd.read_csv(temp_output_file)
         if "outcome" in result_df.columns:
             # Extract values from the outcome column
-            # The values might be stored as strings representing lists like "[123.45]"
             results = []
             for value in result_df["outcome"]:
-                if (
-                    isinstance(value, str)
-                    and value.startswith("[")
-                    and value.endswith("]")
-                ):
-                    # Extract the number from the string representation of a list
-                    try:
-                        # Remove brackets and convert to float
-                        cleaned_value = float(value.strip("[]"))
-                        results.append(cleaned_value)
-                    except ValueError:
-                        results.append(None)
+                # The values are stored as strings representing lists like "[123.45]"
+                if isinstance(value, str):
+                    if value.startswith("[") and value.endswith("]"):
+                        try:
+                            # Remove brackets and convert to float
+                            cleaned_value = float(value.strip("[]"))
+                            results.append(cleaned_value)
+                        except ValueError:
+                            results.append(None)
+                    else:
+                        # Try to convert directly to float if not in brackets
+                        try:
+                            results.append(float(value))
+                        except ValueError:
+                            results.append(None)
+                # Handle actual list objects
                 elif isinstance(value, list) and len(value) > 0:
-                    # If it's already a list, take the first element
-                    results.append(value[0])
+                    if isinstance(value[0], (int, float)):
+                        results.append(value[0])
+                    else:
+                        try:
+                            results.append(float(value[0]))
+                        except (ValueError, TypeError):
+                            results.append(None)
                 else:
-                    # Otherwise, use the value as is
-                    results.append(value)
+                    # Use the value as is if it's already a number
+                    if isinstance(value, (int, float)):
+                        results.append(value)
+                    else:
+                        results.append(None)
 
-            print("Successfully featurized using run method with file output")
+            print("Successfully processed model output")
             return results
         else:
             print("Warning: 'outcome' column not found in output file")
@@ -89,13 +89,16 @@ def try_run_method(model, smiles_list: list) -> list:
                 os.remove(file_path)
 
 
-def featurize_dataset(dataset_path: str, ersilia_model_id: str) -> str:
+def featurize_dataset(
+    dataset_path: str, ersilia_model_id: str, feature_name: str
+) -> str:
     """
     Featurize a dataset using an Ersilia model.
 
     Args:
         dataset_path (str): Path to the dataset to featurize.
         ersilia_model_id (str): The identifier of the Ersilia model to use.
+        feature_name (str): Name of the feature to use for featurization, to be added as a new column in the dataset.
 
     Returns:
         str: Path to the featurized dataset.
@@ -113,20 +116,12 @@ def featurize_dataset(dataset_path: str, ersilia_model_id: str) -> str:
             f"Featurizing {os.path.basename(dataset_path)} dataset using {ersilia_model_id}..."
         )
 
-        # Try predict method first
-        try:
-            results = try_predict_method(model, smiles_list)
-            df["MolWeight"] = results
-        except Exception as e:
-            print(f"Error with predict method: {e}")
-            print("Trying alternative approach with run method...")
-
-            # Fall back to run method
-            results = try_run_method(model, smiles_list)
-            if results:
-                df["MolWeight"] = results
-            else:
-                df["MolWeight"] = None
+        # Process the model output
+        results = process_model_output(model, smiles_list)
+        if results:
+            df[feature_name] = results
+        else:
+            df[feature_name] = None
 
         # Save the featurized dataset
         df.to_csv(output_path, index=False)
@@ -139,10 +134,45 @@ def featurize_dataset(dataset_path: str, ersilia_model_id: str) -> str:
         model.close()
 
 
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Featurize a chemical dataset using an Ersilia model."
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        help="Path to the dataset CSV file containing SMILES strings in a 'Drug' column",
+        required=True,
+    )
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        help="Ersilia model ID to use for featurization (e.g., 'eos3b5e')",
+        required=True,
+    )
+    parser.add_argument(
+        "--feature_name",
+        type=str,
+        help="Name of the feature column to add to the dataset",
+        default="Feature",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    """
-    Example usage for testing
-    """
-    ersilia_model_id = "eos3b5e"
-    dataset_path = os.path.join(data_dir, "AMES_test.csv")
-    featurize_dataset(dataset_path, ersilia_model_id)
+    # Parse command line arguments
+    args = parse_arguments()
+
+    # Get dataset path - if it's not an absolute path, assume it's relative to data directory
+    dataset_path = args.dataset
+    if not os.path.isabs(dataset_path):
+        dataset_path = os.path.join(data_dir, dataset_path)
+
+    # Ensure the dataset exists
+    if not os.path.exists(dataset_path):
+        print(f"Error: Dataset file not found: {dataset_path}")
+        exit(1)
+
+    # Featurize the dataset
+    featurize_dataset(dataset_path, args.model_id, args.feature_name)
