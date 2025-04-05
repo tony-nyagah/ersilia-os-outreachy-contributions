@@ -20,18 +20,18 @@ These are the dataset descriptions as provided by Therapeutics Data Commons (TDC
 
 ## 2. Data acquisition
 
-To get data from Therapeutics Data Commons (TDC), I will use the [fetch_dataset.py](scripts/fetch_dataset.py) script.
+To get *single prediction* data from Therapeutics Data Commons (TDC), I will use the [fetch_dataset.py](scripts/fetch_dataset.py) script.
 
-Here we pass in a dataset name and it's group and the script will download the dataset, split it into train, validation, and test sets, and save it to the data folder.
+I'm fetching only single prediction datasets since this is what we will be using to create a model for now.
 
-List datasets available in TDC:
+List single prediction datasets available in TDC:
 ```bash
 python scripts/fetch_dataset.py --list
 ```
 
 Download a dataset:
 ```bash
-python scripts/fetch_dataset.py --dataset_name AMES --dataset_group Tox
+python scripts/fetch_dataset.py --dataset_group Tox --dataset_name AMES
 ```
 
 ## 3. Data Featurization
@@ -57,4 +57,3 @@ python scripts/featurization.py --dataset AMES_train.csv --model_id eos3b5e --fe
 ```
 
 This will featurize the dataset and save it to the data folder.
-
