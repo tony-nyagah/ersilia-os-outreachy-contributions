@@ -146,25 +146,47 @@ def featurize_dataset(dataset_name: str, model_id: str):
                 results = ersilia_model.run(smiles)
 
                 # Process results - extract features
-                # Assuming the model returns a list of dictionaries with an "output" key
                 if results:
-                    # Create a feature column
-                    features = []
-                    for result in results:
-                        if (
-                            "output" in result
-                            and isinstance(result["output"], list)
-                            and len(result["output"]) > 0
-                        ):
-                            try:
-                                features.append(float(result["output"][0]))
-                            except (ValueError, TypeError):
-                                features.append(None)
-                        else:
-                            features.append(None)
+                    # Get model-specific feature information
+                    feature_info = get_feature_info(model_id)
 
-                    # Add features to dataframe
-                    df["feature"] = features
+                    # Initialize feature columns
+                    feature_data = {
+                        feature_name: [] for feature_name in feature_info["names"]
+                    }
+
+                    # Process each result
+                    for result in results:
+                        if "output" in result and isinstance(result["output"], list):
+                            # Handle based on feature count
+                            if feature_info["count"] == 1:
+                                # Single feature models
+                                try:
+                                    feature_data[feature_info["names"][0]].append(
+                                        float(result["output"][0])
+                                    )
+                                except (ValueError, TypeError, IndexError):
+                                    feature_data[feature_info["names"][0]].append(None)
+                            else:
+                                # Multi-feature models
+                                for i, feature_name in enumerate(feature_info["names"]):
+                                    try:
+                                        if i < len(result["output"]):
+                                            feature_data[feature_name].append(
+                                                float(result["output"][i])
+                                            )
+                                        else:
+                                            feature_data[feature_name].append(None)
+                                    except (ValueError, TypeError):
+                                        feature_data[feature_name].append(None)
+                        else:
+                            # No output data
+                            for feature_name in feature_info["names"]:
+                                feature_data[feature_name].append(None)
+
+                    # Add all features to dataframe
+                    for feature_name, values in feature_data.items():
+                        df[feature_name] = values
 
                     # Save featurized dataset
                     output_path = get_output_path(file_path)
@@ -191,45 +213,45 @@ def featurize_dataset(dataset_name: str, model_id: str):
         return None
 
 
+def get_feature_info(model_id):
+    """
+    Get information about features for a specific model.
+
+    Args:
+        model_id (str): The ID of the Ersilia model.
+
+    Returns:
+        dict: A dictionary containing feature information.
+    """
+    # Model-specific feature information
+    feature_info = {
+        "eos3b5e": {"count": 1, "names": ["molecular_weight"]},
+        "eos2r5a": {"count": 1, "names": ["morgan_fingerprint"]},
+        "eos9gg2": {
+            "count": 8,
+            "names": [
+                "pca_1",
+                "pca_2",
+                "pca_3",
+                "pca_4",
+                "umap_1",
+                "umap_2",
+                "tsne_1",
+                "tsne_2",
+            ],
+        },
+    }
+
+    # Return the model-specific feature info if available, otherwise use a generic one
+    if model_id in feature_info:
+        return feature_info[model_id]
+    else:
+        return {"count": 1, "names": [f"{model_id}_feature"]}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, required=True)
     parser.add_argument("--model_id", type=str, required=True)
     args = parser.parse_args()
     featurize_dataset(args.dataset_name, args.model_id)
-
-# def process_model_output(model, smiles_list, model_id):
-#     """Simple function to process model output"""
-#     try:
-#         results = model.run(smiles_list)
-#         # Basic processing - extract the first value from each result
-#         features = {"feature": []}
-#         for result in results:
-#             if (
-#                 "output" in result
-#                 and isinstance(result["output"], list)
-#                 and len(result["output"]) > 0
-#             ):
-#                 try:
-#                     features["feature"].append(float(result["output"][0]))
-#                 except (ValueError, TypeError):
-#                     features["feature"].append(None)
-#         return features
-#     except Exception as e:
-#         print(f"Error processing model output: {e}")
-#         return None
-
-
-# print(get_datasets("AMES"))
-# Get the full path to the AMES_train.csv file
-# available_datasets = get_datasets("AMES")
-# train_file = "AMES_train.csv"
-# train_path = available_datasets.get(train_file)
-
-# if train_path:
-#     print(f"Processing {train_path} with model eos3b5e...")
-#     print(add_features_to_df(train_path, "eos3b5e"))
-# else:
-#     print(
-#         f"Could not find {train_file} in available datasets: {list(available_datasets.keys())}"
-#     )

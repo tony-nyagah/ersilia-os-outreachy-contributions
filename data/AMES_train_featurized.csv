@@ -1,4 +1,4 @@
-Drug_ID,Drug,Y,feature
+Drug_ID,Drug,Y,molecular_weight
 Drug 1,O=[N+]([O-])c1c2c(c3ccc4cccc5ccc1c3c45)CCCC2,1,
 Drug 2,O=c1c2ccccc2c(=O)c2c1ccc1c2[nH]c2c3c(=O)c4ccccc4c(=O)c3c3[nH]c4c(ccc5c(=O)c6ccccc6c(=O)c54)c3c12,0,
 Drug 3,[N-]=[N+]=CC(=O)NCC(=O)NN,1,

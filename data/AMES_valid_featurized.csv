@@ -1,4 +1,4 @@
-Drug_ID,Drug,Y,feature
+Drug_ID,Drug,Y,molecular_weight
 Drug 4852,C=C(C)C(=O)OCC(O)COc1ccc(C(C)(C)c2ccc(OCC(O)COC(=O)C(=C)C)cc2)cc1,0,
 Drug 4411,Cc1c2cc(CO)ccc2nc2c1ccc1ccccc12,1,
 Drug 2192,CC(=O)NNc1ccccc1,1,
