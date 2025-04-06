@@ -10,16 +10,19 @@ The Ames test is a widely used method to determine whether a chemical can cause 
 ## Table of Contents
 [1. Dataset and task description](#dataset-and-task-description)
 [2. Data acquisition](#data-acquisition)
+[3. Data featurization](#data-featurization)
+[4. Data modeling](#data-modeling)
+[5. Model evaluation](#model-evaluation)
+[6. Model deployment](#model-deployment)
 
-## 1. Dataset and task description
+## Dataset and task description
 These are the dataset descriptions as provided by Therapeutics Data Commons (TDC):
 
 **Dataset description**: Mutagenicity means the ability of a drug to induce genetic alterations. Drugs that can cause damage to the DNA can result in cell death or other severe adverse effects. Nowadays, the most widely used assay for testing the mutagenicity of compounds is the Ames experiment which was invented by a professor named Ames. The Ames test is a short-term bacterial reverse mutation assay detecting a large number of compounds which can induce genetic damage and frameshift mutations. The dataset is aggregated from four papers.
 
 **Task description**: Binary classification. Given a drug SMILES string, predict whether it is mutagenic (1) or not mutagenic (0).
 
-## 2. Data acquisition
-
+## Data acquisition
 To get *single prediction* data from Therapeutics Data Commons (TDC), I will use the [fetch_dataset.py](scripts/fetch_dataset.py) script.
 
 I'm fetching only single prediction datasets since this is what we will be using to create a model for now.
@@ -31,10 +34,10 @@ python scripts/fetch_dataset.py --list
 
 Download a dataset:
 ```bash
-python scripts/fetch_dataset.py --dataset_group Tox --dataset_name AMES
+python scripts/fetch_dataset.py --dataset_name AMES --dataset_group Tox
 ```
 
-## 3. Data Featurization
+## Data Featurization
 We need features to enable us create a decent prediction model. The data we downloaded looks like this so far and doesn't have much to work with:
 ```
 Drug_ID,Drug,Y
@@ -51,9 +54,17 @@ We will use the [featurization.py](scripts/featurization.py) script to featurize
 
 Here we pass in a dataset path which we got from the `fetch_dataset.py` script, a model identifier, and a feature name and the script will featurize the dataset.
 
-Example:
+Example if the model returns a single outcome:
 ```bash
-python scripts/featurization.py --dataset AMES_train.csv --model_id eos3b5e --feature_name MolWeight
+python scripts/featurization.py --dataset_name AMES --model_id eos3b5e --feature_name mol_weight
 ```
 
-This will featurize the dataset and save it to the data folder.
+Example if the model returns multiple outcomes:
+```bash
+python scripts/featurization.py --dataset_name AMES --model_id eos9gg2
+```
+
+This will featurize the dataset and save it to the data folder. Each subsequent run with a new model will update the featurized datasets.
+
+## Data Modeling
+The process of creating a model can be seen in [notebooks/analysis.ipynb](notebooks/analysis.ipynb).

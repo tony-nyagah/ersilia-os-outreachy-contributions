@@ -3,290 +3,182 @@ import pandas as pd
 import argparse
 from ersilia import ErsiliaModel
 
-# Get the absolute path to the data directory
 data_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
 )
 os.makedirs(data_dir, exist_ok=True)
 
 
-def get_output_path(dataset_path: str, model_id: str) -> str:
-    """Generate the output path for the featurized dataset."""
-    dataset_name = os.path.basename(dataset_path)
-    return f"{data_dir}/{os.path.splitext(dataset_name)[0]}_featurized_{model_id}.csv"
-
-
-def extract_smiles(dataset_path: str) -> tuple:
-    """Extract SMILES strings from the dataset."""
-    df = pd.read_csv(dataset_path)
-    smiles_list = df["Drug"].tolist()
-    return df, smiles_list
-
-
-def process_model_output(model, smiles_list: list, feature_name: str) -> dict:
-    """Process the output from an Ersilia model using the run method.
-
-    Returns a dictionary of feature columns and their values.
+def drop_if_exists(df: pd.DataFrame, columns_to_drop: list[str]):
     """
-    # Create a temporary file for the SMILES strings
-    temp_smiles_file = os.path.join(data_dir, "temp_smiles.csv")
-    temp_output_file = os.path.join(data_dir, "temp_output.csv")
-
-    try:
-        # Write SMILES to temp file
-        with open(temp_smiles_file, "w") as f:
-            f.write("\n".join(smiles_list))
-
-        # Run the model with output to a file
-        model.run(input=temp_smiles_file, output=temp_output_file)
-
-        # Read the results
-        result_df = pd.read_csv(temp_output_file)
-
-        # Check for outcome column (standard format)
-        if "outcome" in result_df.columns:
-            # Initialize a dictionary to store feature columns
-            feature_columns = {}
-
-            # Process each row in the outcome column
-            for idx, value in enumerate(result_df["outcome"]):
-                # Handle different types of outcome values
-                if isinstance(value, str):
-                    # Try to parse as a list if it looks like one
-                    if value.startswith("[") and value.endswith("]"):
-                        try:
-                            # Convert string representation of list to actual list
-                            import ast
-
-                            value_list = ast.literal_eval(value)
-
-                            # If it's a list with multiple values, create multiple features
-                            if isinstance(value_list, list) and len(value_list) > 1:
-                                for i, val in enumerate(value_list):
-                                    col_name = f"{feature_name}_{i+1}"
-                                    if col_name not in feature_columns:
-                                        feature_columns[col_name] = [None] * len(
-                                            smiles_list
-                                        )
-                                    feature_columns[col_name][idx] = val
-                            elif isinstance(value_list, list) and len(value_list) == 1:
-                                # Single value in a list
-                                if feature_name not in feature_columns:
-                                    feature_columns[feature_name] = [None] * len(
-                                        smiles_list
-                                    )
-                                feature_columns[feature_name][idx] = value_list[0]
-                        except (ValueError, SyntaxError):
-                            # If parsing fails, treat as a single value
-                            if feature_name not in feature_columns:
-                                feature_columns[feature_name] = [None] * len(
-                                    smiles_list
-                                )
-                            try:
-                                feature_columns[feature_name][idx] = float(
-                                    value.strip("[]")
-                                )
-                            except ValueError:
-                                feature_columns[feature_name][idx] = None
-                    else:
-                        # Regular string value
-                        if feature_name not in feature_columns:
-                            feature_columns[feature_name] = [None] * len(smiles_list)
-                        try:
-                            feature_columns[feature_name][idx] = float(value)
-                        except ValueError:
-                            feature_columns[feature_name][idx] = None
-
-                # Handle actual list objects
-                elif isinstance(value, list):
-                    if len(value) > 1:
-                        # Multiple values in a list
-                        for i, val in enumerate(value):
-                            col_name = f"{feature_name}_{i+1}"
-                            if col_name not in feature_columns:
-                                feature_columns[col_name] = [None] * len(smiles_list)
-                            feature_columns[col_name][idx] = val
-                    elif len(value) == 1:
-                        # Single value in a list
-                        if feature_name not in feature_columns:
-                            feature_columns[feature_name] = [None] * len(smiles_list)
-                        feature_columns[feature_name][idx] = value[0]
-
-                # Handle numeric values
-                elif isinstance(value, (int, float)):
-                    if feature_name not in feature_columns:
-                        feature_columns[feature_name] = [None] * len(smiles_list)
-                    feature_columns[feature_name][idx] = value
-
-                # Handle None or other types
-                else:
-                    if feature_name not in feature_columns:
-                        feature_columns[feature_name] = [None] * len(smiles_list)
-                    feature_columns[feature_name][idx] = None
-
-            if feature_columns:
-                print(
-                    f"Successfully processed model output with {len(feature_columns)} features"
-                )
-                return feature_columns
-            else:
-                print("Warning: No features extracted from outcome column")
-                return None
-
-        # Check for specific feature columns (like PCA, UMAP, tSNE)
-        elif any(
-            col.startswith(("pca_", "umap_", "tsne_")) for col in result_df.columns
-        ):
-            # Initialize a dictionary to store feature columns
-            feature_columns = {}
-
-            # Get all feature columns (pca, umap, tsne)
-            feature_cols = [
-                col
-                for col in result_df.columns
-                if col.startswith(("pca_", "umap_", "tsne_"))
-            ]
-
-            if feature_cols:
-                print(
-                    f"Found {len(feature_cols)} feature columns: {', '.join(feature_cols)}"
-                )
-
-                # Process each feature column
-                for col in feature_cols:
-                    col_name = f"{feature_name}_{col}"  # e.g., ChemSpaceProjectionDrugbank_pca_1
-                    feature_columns[col_name] = result_df[col].tolist()
-
-                print(
-                    f"Successfully processed model output with {len(feature_columns)} features"
-                )
-                return feature_columns
-            else:
-                print("Warning: No feature columns found in output file")
-                return None
-        else:
-            print(
-                "Warning: Neither 'outcome' column nor feature columns found in output file"
-            )
-            print(f"Available columns: {', '.join(result_df.columns)}")
-            return None
-    except Exception as e:
-        print(f"Error processing output file: {e}")
-        return None
-    finally:
-        # Clean up temporary files
-        for file_path in [temp_smiles_file, temp_output_file]:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-
-
-def featurize_dataset(
-    dataset_path: str, ersilia_model_id: str, feature_name: str
-) -> str:
-    """
-    Featurize a dataset using an Ersilia model.
+    Drop columns from a DataFrame if they exist.
 
     Args:
-        dataset_path (str): Path to the dataset to featurize.
-        ersilia_model_id (str): The identifier of the Ersilia model to use.
-        feature_name (str): Name of the feature to use for featurization, to be added as a new column in the dataset.
+        df (pd.DataFrame): The DataFrame to drop columns from.
+        columns_to_drop (list[str]): List of column names to drop.
 
     Returns:
-        str: Path to the featurized dataset.
+        pd.DataFrame: The DataFrame with the specified columns dropped.
     """
-    # Initialize and serve the model
-    model = ErsiliaModel(ersilia_model_id)
-    model.serve()
+    # Filter to only include columns that exist in the DataFrame
+    existing_columns = [col for col in columns_to_drop if col in df.columns]
 
+    # Drop the existing columns
+    if existing_columns:
+        return df.drop(columns=existing_columns)
+    return df
+
+
+def get_datasets(prefix: str):
+    """
+    Get datasets from the data directory with a given prefix.
+
+    Args:
+        prefix (str): The prefix to filter the dataset names.
+
+    Returns:
+        dict: A dictionary of dataset names and their file paths.
+    """
+    datasets = {}
     try:
-        # Setup
-        output_path = get_output_path(dataset_path, ersilia_model_id)
-        df, smiles_list = extract_smiles(dataset_path)
-
-        print(
-            f"Featurizing {os.path.basename(dataset_path)} dataset using {ersilia_model_id}..."
-        )
-
-        # Process the model output
-        feature_columns = process_model_output(model, smiles_list, feature_name)
-        if feature_columns:
-            # Add each feature column to the dataframe
-            for col_name, values in feature_columns.items():
-                # Check if lengths match, if not, handle the mismatch
-                if len(values) != len(df):
-                    print(
-                        f"Warning: Length mismatch between feature values ({len(values)}) and dataset ({len(df)})"
-                    )
-                    # Create a new column with NaN values
-                    df[col_name] = None
-
-                    # Map values to the dataframe based on SMILES
-                    # First, create a mapping from SMILES to feature value
-                    smiles_to_feature = {}
-                    for i, smiles in enumerate(smiles_list[: len(values)]):
-                        smiles_to_feature[smiles] = values[i]
-
-                    # Then, fill in the values where SMILES match
-                    for i, smiles in enumerate(df["Drug"]):
-                        if smiles in smiles_to_feature:
-                            df.at[i, col_name] = smiles_to_feature[smiles]
-                else:
-                    # If lengths match, just assign the values directly
-                    df[col_name] = values
-        else:
-            # If no features were extracted, add an empty column
-            df[feature_name] = None
-
-        # Save the featurized dataset
-        df.to_csv(output_path, index=False)
-        print(f"Featurized dataset saved to: {output_path}")
-
-        return output_path
-
-    finally:
-        # Ensure model is closed even if an error occurs
-        model.close()
+        for root, dirs, files in os.walk(data_dir):
+            for file in files:
+                file_name = os.path.basename(file)
+                if file_name.startswith(prefix) and file_name.endswith(".csv"):
+                    datasets[file_name] = os.path.join(root, file)
+    except Exception as e:
+        print(f"Error occurred while getting datasets: {e}")
+    return datasets
 
 
-def parse_arguments():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Featurize a chemical dataset using an Ersilia model."
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        help="Path to the dataset CSV file containing SMILES strings in a 'Drug' column",
-        required=True,
-    )
-    parser.add_argument(
-        "--model_id",
-        type=str,
-        help="Ersilia model ID to use for featurization (e.g., 'eos3b5e')",
-        required=True,
-    )
-    parser.add_argument(
-        "--feature_name",
-        type=str,
-        help="Name of the feature column to add to the dataset",
-        default="Feature",
-    )
-    return parser.parse_args()
+def featurize_file(file_path: str, ersilia_model_id: str, feature_name: str = None):
+    """
+    Featurize a single file using an Ersilia model.
+
+    Args:
+        file_path (str): Path to the CSV file.
+        ersilia_model_id (str): ID of the Ersilia model to use.
+        feature_name (str, optional): Custom name for the feature column if model returns a single result.
+
+    Returns:
+        pd.DataFrame: Featurized DataFrame.
+    """
+    print(f"Processing {os.path.basename(file_path)}...")
+
+    # Get output file path
+    file_name = os.path.basename(file_path)
+    featurized_file_name = file_name.replace(".csv", "_featurized.csv")
+    featurized_file_path = os.path.join(data_dir, featurized_file_name)
+
+    # Read input file
+    df = pd.read_csv(file_path)
+    smiles = df["Drug"].tolist()
+
+    # Initialize and run the model
+    ersilia_model = ErsiliaModel(ersilia_model_id)
+    ersilia_model.serve()
+
+    # Run the model and save output to a temporary file
+    temp_output_file = os.path.join(data_dir, "temp_output.csv")
+    ersilia_model.run(smiles, output=temp_output_file)
+    ersilia_model.close()
+
+    # Process model output
+    model_results = pd.read_csv(temp_output_file)
+    model_results = drop_if_exists(model_results, ["key"])
+    model_results = model_results.rename(columns={"input": "Drug"})
+
+    # Rename outcome/score column if feature_name is provided and model returns a single result
+    if feature_name and len(model_results.columns) == 2 and any(col in model_results.columns for col in ["outcome", "score"]):
+        column_to_rename = "outcome" if "outcome" in model_results.columns else "score"
+        model_results = model_results.rename(columns={column_to_rename: feature_name})
+        print(f"Renamed '{column_to_rename}' column to '{feature_name}'")
+
+    # Merge with original data
+    result_df = df.merge(model_results, on="Drug", how="left")
+
+    # Check if a featurized file already exists
+    if os.path.exists(featurized_file_path):
+        print(f"Found existing featurized file: {featurized_file_path}")
+        existing_df = pd.read_csv(featurized_file_path)
+
+        # Get columns that are in result_df but not in existing_df
+        new_columns = [
+            col for col in result_df.columns if col not in existing_df.columns
+        ]
+
+        if not new_columns:
+            print(f"All features already exist in {featurized_file_path}, skipping...")
+            return existing_df
+
+        print(f"Adding new features: {new_columns}")
+
+        # Use pd.concat to add new columns efficiently instead of adding them one by one
+        # This avoids DataFrame fragmentation and improves performance
+        new_features_df = result_df[new_columns].copy()
+        existing_df = pd.concat([existing_df, new_features_df], axis=1)
+
+        # Save updated dataframe
+        existing_df.to_csv(featurized_file_path, index=False)
+        return existing_df
+    else:
+        # Save as new featurized dataset
+        result_df.to_csv(featurized_file_path, index=False)
+        print(f"Featurized file saved to {featurized_file_path}")
+        return result_df
+
+
+def featurize_dataset(dataset_name: str, model_id: str, feature_name: str = None):
+    """
+    Featurize all files for a dataset using an Ersilia model.
+
+    Args:
+        dataset_name (str): Name of the dataset.
+        model_id (str): ID of the Ersilia model to use.
+        feature_name (str, optional): Custom name for the feature column if model returns a single result.
+
+    Returns:
+        list: Paths to the featurized files.
+    """
+    available_datasets = get_datasets(dataset_name)
+
+    train_file = f"{dataset_name}_train.csv"
+    test_file = f"{dataset_name}_test.csv"
+    valid_file = f"{dataset_name}_valid.csv"
+
+    # Check if all required files exist
+    missing_files = []
+    for file in [train_file, test_file, valid_file]:
+        if file not in available_datasets:
+            missing_files.append(file)
+
+    if missing_files:
+        print(f"Error: The following files are missing: {missing_files}")
+        print(f"Available datasets: {list(available_datasets.keys())}")
+        return None
+
+    featurized_files = []
+    for file in [train_file, test_file, valid_file]:
+        file_path = available_datasets[file]
+        try:
+            featurized_df = featurize_file(file_path, model_id, feature_name)
+            if featurized_df is not None:
+                featurized_file_name = file.replace(".csv", "_featurized.csv")
+                featurized_files.append(os.path.join(data_dir, featurized_file_name))
+        except Exception as e:
+            print(f"Error featurizing {file}: {e}")
+
+    return featurized_files
 
 
 if __name__ == "__main__":
-    # Parse command line arguments
-    args = parse_arguments()
-
-    # Get dataset path - if it's not an absolute path, assume it's relative to data directory
-    dataset_path = args.dataset
-    if not os.path.isabs(dataset_path):
-        dataset_path = os.path.join(data_dir, dataset_path)
-
-    # Ensure the dataset exists
-    if not os.path.exists(dataset_path):
-        print(f"Error: Dataset file not found: {dataset_path}")
-        exit(1)
-
-    # Featurize the dataset
-    featurize_dataset(dataset_path, args.model_id, args.feature_name)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, required=True)
+    parser.add_argument("--model_id", type=str, required=True)
+    parser.add_argument(
+        "--feature_name",
+        type=str,
+        help="Custom name for the feature column if model returns a single result",
+    )
+    args = parser.parse_args()
+    featurize_dataset(args.dataset_name, args.model_id, args.feature_name)
