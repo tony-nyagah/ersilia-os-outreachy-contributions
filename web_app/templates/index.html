@@ -1,0 +1,37 @@
+{% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Enter SMILES String</h5>
+        <form method="POST" action="/">
+          <div class="mb-3">
+            <label for="smiles" class="form-label">SMILES</label>
+            <input
+              type="text"
+              class="form-control"
+              id="smiles"
+              name="smiles"
+              placeholder="CC(=O)Oc1ccccc1C(=O)O"
+              required
+              value="{{ smiles if smiles else '' }}"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Predict</button>
+        </form>
+
+        {% if prediction %}
+        <div
+          class="result-box {{ 'result-mutagenic' if prediction == 'Mutagenic' else 'result-non-mutagenic' }}"
+        >
+          <h6>Results:</h6>
+          <p><strong>SMILES:</strong> {{ smiles }}</p>
+          <p><strong>Prediction:</strong> {{ prediction }}</p>
+          <p><strong>Probability:</strong> {{ "%.2f"|format(probability) }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

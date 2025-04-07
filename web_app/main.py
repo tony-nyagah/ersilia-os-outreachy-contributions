@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Form
 from pydantic import BaseModel
 import joblib
 import numpy as np
 import os
 from pathlib import Path
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 # Define the models directory relative to this file
 MODELS_DIR = Path(__file__).parent.parent / "models"
@@ -14,6 +17,9 @@ app = FastAPI(
     description="Predicts mutagenicity of drugs using SMILE strings",
     version="1.0.0",
 )
+
+# Setup templates
+templates = Jinja2Templates(directory="templates")
 
 
 # Pydantic models for request/response
@@ -39,16 +45,15 @@ except Exception as e:
     raise
 
 
-@app.get("/")
-async def root():
-    return {"status": "ok", "message": "Drug Mutagenicity Prediction API"}
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.post("/predict", response_model=PredictionResponse)
-async def predict(request: DrugRequest):
+@app.post("/", response_class=HTMLResponse)
+async def predict(request: Request, smiles: str = Form(...)):
     try:
-        # TODO: Implement feature generation from SMILES
-        # This is a placeholder - replace with your actual feature generation
+        # TODO: Replace with actual feature generation
         features = np.random.random((1, len(scaler.get_feature_names_out())))
 
         # Scale features
@@ -58,11 +63,16 @@ async def predict(request: DrugRequest):
         prediction = model.predict(scaled_features)[0]
         probability = model.predict_proba(scaled_features)[0][1]
 
-        return PredictionResponse(
-            smiles=request.smiles,
-            prediction="Mutagenic" if prediction == 1 else "Non-mutagenic",
-            probability=float(probability),
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                "request": request,
+                "smiles": smiles,
+                "prediction": "Mutagenic" if prediction == 1 else "Non-mutagenic",
+                "probability": probability,
+            },
         )
-
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        return templates.TemplateResponse(
+            "index.html", {"request": request, "error": f"Prediction failed: {str(e)}"}
+        )

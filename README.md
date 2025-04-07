@@ -32,6 +32,12 @@ The Ames test is a widely used method to determine whether a chemical can cause 
     - [Class Distribution Before SMOTE](#class-distribution-before-smote)
     - [Class Distribution After SMOTE](#class-distribution-after-smote)
 - [Using the Model for Predictions](#using-the-model-for-predictions)
+- [Web Application](#web-application)
+  - [Prerequisites](#prerequisites)
+  - [Running the Web Application](#running-the-web-application)
+  - [Usage](#usage)
+  - [Example SMILES Strings](#example-smiles-strings)
+  - [API Endpoints](#api-endpoints)
 - [Future Work](#future-work)
   - [Model Improvements](#model-improvements)
   - [Validation and Testing](#validation-and-testing)
@@ -326,6 +332,56 @@ In a real-world implementation, you would need to:
 1. Use the same featurization process that was applied during training
 
 
+## Web Application
+
+The project includes a web interface for predicting drug mutagenicity using SMILES strings.
+
+### Prerequisites
+
+- Trained models (`models/best_model_rf.pkl` and `models/feature_scaler.pkl`)
+
+### Running the Web Application
+After installing all dependencies in `environment.yml` using `Conda`:
+
+1. Navigate to the web app directory:
+   ```bash
+   cd web_app
+   ```
+
+2. Start the application:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+3. Open your web browser and visit:
+   - Web Interface: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+   - API Documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+### Usage
+
+1. Enter a valid SMILES string in the input field
+2. Click "Predict" to get the mutagenicity prediction
+3. Results will show:
+   - Prediction (Mutagenic/Non-mutagenic)
+   - Probability score
+   - Original SMILES string
+
+### Example SMILES Strings
+
+Try these example compounds:
+- Aspirin: `CC(=O)Oc1ccccc1C(=O)O`
+- Caffeine: `CN1C=NC2=C1C(=O)N(C(=O)N2C)C`
+- Paracetamol: `CC(=O)NC1=CC=C(O)C=C1`
+
+### API Endpoints
+
+- `GET /`: Web interface
+- `POST /predict`: API endpoint for predictions
+  ```bash
+  curl -X POST "http://localhost:8000/predict" \
+       -H "Content-Type: application/json" \
+       -d '{"smiles": "CC(=O)Oc1ccccc1C(=O)O"}'
+
 
 ## Future Work
 
@@ -360,7 +416,7 @@ This project provides a solid foundation for mutagenicity prediction, but severa
 
 ### Deployment
 
-1. **Web Interface**: Develop a user-friendly web application for non-technical users
+1. **Web Interface**: Develop a bettwe looking user-friendly web application for non-technical users
 2. **API Integration**: Create an API for integration with other drug discovery platforms
 3. **Containerization**: Package the model in a Docker container for easy deployment
 
