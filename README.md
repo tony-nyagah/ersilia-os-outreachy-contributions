@@ -8,12 +8,39 @@ I have chosen the [AMES mutagenicity dataset](https://tdcommons.ai/single_pred_t
 The Ames test is a widely used method to determine whether a chemical can cause mutations in DNA. This is crucial in drug development since compounds that damage DNA can lead to cancer or other severe health issues.
 
 ## Table of Contents
-[1. Dataset and task description](#dataset-and-task-description)
-[2. Data acquisition](#data-acquisition)
-[3. Data featurization](#data-featurization)
-[4. Data modeling](#data-modeling)
-[5. Model evaluation](#model-evaluation)
-[6. Model deployment](#model-deployment)
+- [Mutagenicity prediction project](#mutagenicity-prediction-project)
+  - [Table of Contents](#table-of-contents)
+  - [Dataset and task description](#dataset-and-task-description)
+  - [Data acquisition](#data-acquisition)
+  - [Data Featurization](#data-featurization)
+  - [Data Modeling](#data-modeling)
+    - [Data Preprocessing](#data-preprocessing)
+    - [Exploratory Data Analysis](#exploratory-data-analysis)
+    - [Model Training](#model-training)
+    - [Model Evaluation](#model-evaluation)
+    - [Results](#results)
+      - [Model Comparison](#model-comparison)
+      - [Best Model Performance](#best-model-performance)
+    - [Key Findings](#key-findings)
+    - [Model Saving](#model-saving)
+  - [Model Interpretation](#model-interpretation)
+    - [Feature Importance](#feature-importance)
+      - [Random Forest Feature Importance](#random-forest-feature-importance)
+      - [XGBoost Feature Importance](#xgboost-feature-importance)
+      - [Feature Correlations](#feature-correlations)
+    - [Confusion Matrix](#confusion-matrix)
+    - [ROC Curves](#roc-curves)
+    - [SMOTE Impact](#smote-impact)
+      - [Class Distribution Before SMOTE](#class-distribution-before-smote)
+      - [Class Distribution After SMOTE](#class-distribution-after-smote)
+  - [Using the Model for Predictions](#using-the-model-for-predictions)
+  - [Future Work](#future-work)
+    - [Model Improvements](#model-improvements)
+    - [Validation and Testing](#validation-and-testing)
+    - [Interpretability](#interpretability)
+    - [Deployment](#deployment)
+    - [Collaboration](#collaboration)
+    - [Domain Knowledge Enhancement](#domain-knowledge-enhancement)
 
 ## Dataset and task description
 These are the dataset descriptions as provided by Therapeutics Data Commons (TDC):
@@ -25,7 +52,7 @@ These are the dataset descriptions as provided by Therapeutics Data Commons (TDC
 ## Data acquisition
 To get *single prediction* data from Therapeutics Data Commons (TDC), I will use the [fetch_dataset.py](scripts/fetch_dataset.py) script.
 
-I'm fetching only single prediction datasets since this is what we will be using to create a model for now.
+I'm fetching only single prediction datasets since this is what I will be using to create a model for now.
 
 List single prediction datasets available in TDC:
 ```bash
@@ -38,7 +65,7 @@ python scripts/fetch_dataset.py --dataset_name AMES --dataset_group Tox
 ```
 
 ## Data Featurization
-We need features to enable us create a decent prediction model. The data we downloaded looks like this so far and doesn't have much to work with:
+I need features to enable us create a decent prediction model. The data I downloaded looks like this so far and doesn't have much to work with:
 ```
 Drug_ID,Drug,Y
 Drug 1,O=[N+]([O-])c1c2c(c3ccc4cccc5ccc1c3c45)CCCC2,1
@@ -48,11 +75,11 @@ Drug 4,[N-]=[N+]=C1C=NC(=O)NC1=O,1
 Drug 6,CCCCN(CC(O)C1=CC(=[N+]=[N-])C(=O)C=C1)N=O,1
 ```
 
-For featurization we will use variouse Ersilia models and determine which one is the best for our task.
+For featurization I will use variouse Ersilia models and determine which one is the best for our task.
 
-We will use the [featurization.py](scripts/featurization.py) script to featurize the dataset.
+I will use the [featurization.py](scripts/featurization.py) script to featurize the dataset.
 
-Here we pass in a dataset path which we got from the `fetch_dataset.py` script, a model identifier, and a feature name and the script will featurize the dataset.
+Here I pass in a dataset path which I got from the `fetch_dataset.py` script, a model identifier, and a feature name and the script will featurize the dataset.
 
 Example if the model returns a single outcome:
 ```bash
@@ -179,9 +206,18 @@ A comprehensive performance summary was also saved to `../results/model_performa
 
 ### Feature Importance
 
-Understanding which molecular features contribute most to mutagenicity prediction is crucial for drug development. Our Random Forest model identified several key features that strongly influence mutagenic potential:
+The models provide insights into which features are most important for predicting mutagenicity:
 
+#### Random Forest Feature Importance
 ![Random Forest Feature Importance](figures/rf_feature_importance.png)
+
+#### XGBoost Feature Importance
+![XGBoost Feature Importance](figures/xgb_feature_importance.png)
+
+#### Feature Correlations
+![Feature Correlations](figures/feature_correlations.png)
+
+These visualizations reveal which molecular properties have the strongest influence on mutagenicity predictions. Understanding these relationships helps in interpreting the model's decisions and can guide medicinal chemists in designing safer compounds.
 
 The most important features include:
 1. **PCA components**: These capture complex patterns in molecular structure that correlate with mutagenicity
@@ -192,7 +228,7 @@ The most important features include:
 
 The confusion matrix below shows the performance of our best model (Random Forest) on the test set:
 
-![Confusion Matrix](figures/confusion_matrices.png)
+<!-- Note: No confusion matrix image is available in the figures folder -->
 
 This visualization reveals:
 - **True Positives**: Correctly identified mutagenic compounds
@@ -204,20 +240,23 @@ This visualization reveals:
 
 The Receiver Operating Characteristic (ROC) curves compare the performance of different models:
 
-![ROC Curves](figures/model_comparison_roc.png)
+![ROC Curves with SMOTE](figures/roc_curves_with_smote.png)
 
-The Random Forest model (blue line) achieves the highest Area Under the Curve (AUC), confirming its superior performance for this task.
+The Random Forest model achieves the highest Area Under the Curve (AUC), confirming its superior performance for this task. The curves show how different models perform in terms of the trade-off between true positive rate and false positive rate.
 
 ### SMOTE Impact
 
-We also evaluated how SMOTE affected class distribution and model performance:
+I also evaluated how SMOTE affected class distribution and model performance:
 
+#### Class Distribution Before SMOTE
 ![Class Distribution Before SMOTE](figures/class_distribution_before_smote.png)
+
+#### Class Distribution After SMOTE
 ![Class Distribution After SMOTE](figures/class_distribution_after_smote.png)
 
-After applying SMOTE, the class distribution became more balanced, which helped improve recall for the minority class.
 
-![ROC Curves with SMOTE](figures/roc_curves_with_smote.png)
+
+After applying SMOTE, the class distribution became more balanced, which helped improve recall for the minority class. This was particularly important for our mutagenicity prediction task, as false negatives (missing a mutagenic compound) can be more costly than false positives.
 
 ## Using the Model for Predictions
 
@@ -287,8 +326,8 @@ print(results)
 
 In a real-world implementation, you would need to:
 1. Use the same featurization process that was applied during training
-2. Ensure all required features are generated for the new compounds
-3. Apply the same preprocessing steps (handling missing values, scaling, etc.)
+
+
 
 ## Future Work
 
