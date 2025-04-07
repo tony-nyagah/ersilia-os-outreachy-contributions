@@ -67,4 +67,276 @@ python scripts/featurization.py --dataset_name AMES --model_id eos9gg2
 This will featurize the dataset and save it to the data folder. Each subsequent run with a new model will update the featurized datasets.
 
 ## Data Modeling
-The process of creating a model can be seen in [notebooks/analysis.ipynb](notebooks/analysis.ipynb).
+The complete model development process is documented in [notebooks/analysis.ipynb](notebooks/analysis.ipynb). Below is a summary of the approach and findings.
+
+### Data Preprocessing
+
+1. **Data Loading**: The featurized AMES datasets (train, validation, test) were loaded from CSV files.
+
+2. **Feature Extraction**: Features were extracted from the dataset, including:
+   - Molecular descriptors (sa-score, molecular-weight)
+   - Dimensionality reduction components (PCA, UMAP, t-SNE)
+   - Chemical property scores (RA_score)
+
+3. **Data Cleaning**:
+   - Removed duplicate compounds
+   - Converted string representations of lists to numeric values
+   - Handled missing values using mean imputation
+   - Dropped rows with NaN values in the target variable
+
+4. **Feature Standardization**: Applied StandardScaler to normalize features to have zero mean and unit variance.
+
+### Exploratory Data Analysis
+
+1. **Class Distribution**: Analyzed the distribution of mutagenic vs. non-mutagenic compounds.
+
+2. **Feature Correlation**: Examined correlations between features to identify potential redundancies.
+
+3. **Feature Importance**: Preliminary assessment of which molecular properties might be most predictive.
+
+### Model Training
+
+Multiple machine learning models were trained and evaluated:
+
+1. **Random Forest Classifier**:
+   - Trained with 100 estimators and default hyperparameters
+   - Evaluated on validation and test sets
+   - Generated feature importance rankings
+
+2. **XGBoost Classifier**:
+   - Trained with default hyperparameters
+   - Evaluated on validation and test sets
+   - Compared performance with Random Forest
+
+3. **Handling Class Imbalance with SMOTE**:
+   - Applied Synthetic Minority Over-sampling Technique to balance the training data
+   - Improved model performance on minority class
+   - Retrained both Random Forest and XGBoost on the balanced dataset
+
+4. **Hyperparameter Tuning**:
+   - Used GridSearchCV to optimize model parameters
+   - Explored different configurations to maximize performance
+
+### Model Evaluation
+
+Models were evaluated using multiple metrics:
+
+1. **Classification Metrics**:
+   - Accuracy: Overall correctness of predictions
+   - Precision: Ability to avoid false positives
+   - Recall: Ability to find all positive samples
+   - F1-score: Harmonic mean of precision and recall
+
+2. **ROC Curves and AUC**:
+   - Plotted ROC curves to visualize performance across thresholds
+   - Calculated Area Under the Curve (AUC) as a comprehensive metric
+
+3. **Confusion Matrices**:
+   - Visualized true positives, false positives, true negatives, and false negatives
+
+### Results
+
+#### Model Comparison
+After evaluating all models on the validation set, the following accuracies were achieved:
+
+- **Random Forest**: 75.76%
+- **Tuned Random Forest**: 75.76%
+- **Random Forest with SMOTE**: 73.42%
+- **XGBoost**: 70.80%
+- **XGBoost with SMOTE**: 69.01%
+
+#### Best Model Performance
+The standard **Random Forest** model was selected as the best model based on validation accuracy. Its performance on the test set was:
+
+- **Accuracy**: 74.21%
+- **Precision**: 75.15%
+- **Recall**: 79.02%
+- **F1 Score**: 77.04%
+
+### Key Findings
+
+1. **Model Selection**: Random Forest consistently outperformed XGBoost, both with and without SMOTE, making it our preferred model for this task.
+
+2. **SMOTE Impact**: While SMOTE improved class balance, the standard Random Forest achieved slightly better overall accuracy. However, the SMOTE models showed improved recall for the minority class.
+
+3. **Feature Importance**: The most predictive features for mutagenicity were the dimensionality reduction components (particularly PCA components) and the SA score, highlighting the importance of these molecular properties in determining mutagenic potential.
+
+4. **Generalization**: The models showed consistent performance between validation and test sets, indicating good generalization to unseen compounds.
+
+### Model Saving
+
+The best-performing model and the corresponding scaler were saved for future use and potential deployment:
+
+```python
+# Save the best model and scaler
+joblib.dump(rf_model, "../models/best_model_rf.pkl")
+joblib.dump(scaler, "../models/feature_scaler.pkl")
+```
+
+A comprehensive performance summary was also saved to `../results/model_performance_summary.csv` for future reference.
+
+## Model Interpretation
+
+### Feature Importance
+
+Understanding which molecular features contribute most to mutagenicity prediction is crucial for drug development. Our Random Forest model identified several key features that strongly influence mutagenic potential:
+
+![Random Forest Feature Importance](figures/rf_feature_importance.png)
+
+The most important features include:
+1. **PCA components**: These capture complex patterns in molecular structure that correlate with mutagenicity
+2. **SA-score**: Synthetic accessibility score, indicating how easily a compound can be synthesized
+3. **Molecular weight**: Heavier molecules often have different mutagenic properties
+
+### Confusion Matrix
+
+The confusion matrix below shows the performance of our best model (Random Forest) on the test set:
+
+![Confusion Matrix](figures/confusion_matrices.png)
+
+This visualization reveals:
+- **True Positives**: Correctly identified mutagenic compounds
+- **True Negatives**: Correctly identified non-mutagenic compounds
+- **False Positives**: Non-mutagenic compounds incorrectly classified as mutagenic
+- **False Negatives**: Mutagenic compounds incorrectly classified as non-mutagenic
+
+### ROC Curves
+
+The Receiver Operating Characteristic (ROC) curves compare the performance of different models:
+
+![ROC Curves](figures/model_comparison_roc.png)
+
+The Random Forest model (blue line) achieves the highest Area Under the Curve (AUC), confirming its superior performance for this task.
+
+### SMOTE Impact
+
+We also evaluated how SMOTE affected class distribution and model performance:
+
+![Class Distribution Before SMOTE](figures/class_distribution_before_smote.png)
+![Class Distribution After SMOTE](figures/class_distribution_after_smote.png)
+
+After applying SMOTE, the class distribution became more balanced, which helped improve recall for the minority class.
+
+![ROC Curves with SMOTE](figures/roc_curves_with_smote.png)
+
+## Using the Model for Predictions
+
+The trained model can be easily used to make predictions on new compounds. Here's a sample code snippet for making predictions:
+
+```python
+import pandas as pd
+import numpy as np
+import joblib
+from rdkit import Chem
+
+# Load the saved model and scaler
+model = joblib.load('models/best_model_rf.pkl')
+scaler = joblib.load('models/feature_scaler.pkl')
+
+# Example function to make predictions on new SMILES strings
+def predict_mutagenicity(smiles_list, model, scaler, features_needed):
+    """Predict mutagenicity for a list of SMILES strings.
+    
+    Args:
+        smiles_list (list): List of SMILES strings to predict
+        model: Trained model
+        scaler: Fitted scaler
+        features_needed (list): List of feature names required by the model
+        
+    Returns:
+        DataFrame with SMILES strings and predictions
+    """
+    # This is a placeholder - in a real scenario, you would:
+    # 1. Generate the same features used during training
+    # 2. Apply the scaler
+    # 3. Make predictions
+    
+    # For demonstration purposes, we'll create a dummy feature set
+    dummy_features = np.random.random((len(smiles_list), len(features_needed)))
+    scaled_features = scaler.transform(dummy_features)
+    
+    # Make predictions
+    predictions = model.predict(scaled_features)
+    probabilities = model.predict_proba(scaled_features)[:, 1]
+    
+    # Create results dataframe
+    results = pd.DataFrame({
+        'SMILES': smiles_list,
+        'Predicted_Class': predictions,
+        'Mutagenic_Probability': probabilities,
+        'Prediction': ['Mutagenic' if p == 1 else 'Non-mutagenic' for p in predictions]
+    })
+    
+    return results
+
+# Example usage
+test_compounds = [
+    'CC(=O)Oc1ccccc1C(=O)O',  # Aspirin
+    'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O',  # Ibuprofen
+    'CN1C=NC2=C1C(=O)N(C(=O)N2C)C'  # Caffeine
+]
+
+# List of features needed (these would match your model's training features)
+features = ['sa-score', 'molecular-weight', 'pca_1', 'pca_2', 'pca_3', 'pca_4', 
+           'umap_1', 'umap_2', 'tsne_1', 'tsne_2', 'RA_score']
+
+# Get predictions
+results = predict_mutagenicity(test_compounds, model, scaler, features)
+print(results)
+```
+
+In a real-world implementation, you would need to:
+1. Use the same featurization process that was applied during training
+2. Ensure all required features are generated for the new compounds
+3. Apply the same preprocessing steps (handling missing values, scaling, etc.)
+
+## Future Work
+
+This project provides a solid foundation for mutagenicity prediction, but several enhancements could further improve its performance and utility. The model could be significantly improved with deeper domain knowledge and expertise in medicinal chemistry and drug discovery:
+
+### Model Improvements
+
+1. **Additional Molecular Descriptors**: Incorporate more chemical descriptors from RDKit or other cheminformatics libraries, such as:
+   - Topological polar surface area (TPSA)
+   - Number of hydrogen bond donors/acceptors
+   - Lipophilicity (LogP)
+   - Structural alerts specific to mutagenicity
+
+2. **Advanced Machine Learning Techniques**:
+   - Ensemble methods combining multiple models
+   - Deep learning approaches (graph neural networks)
+   - Active learning for more efficient data utilization
+
+3. **Transfer Learning**: Leverage pre-trained models from related toxicity prediction tasks
+
+### Validation and Testing
+
+1. **External Validation**: Test the model on additional external datasets
+2. **Applicability Domain**: Define the chemical space where the model predictions are reliable
+3. **Uncertainty Quantification**: Provide confidence intervals for predictions
+
+### Interpretability
+
+1. **SHAP Values**: Implement SHapley Additive exPlanations for more detailed feature importance
+2. **Partial Dependence Plots**: Visualize how specific molecular properties affect predictions
+3. **Substructure Highlighting**: Identify specific molecular substructures associated with mutagenicity
+
+### Deployment
+
+1. **Web Interface**: Develop a user-friendly web application for non-technical users
+2. **API Integration**: Create an API for integration with other drug discovery platforms
+3. **Containerization**: Package the model in a Docker container for easy deployment
+
+### Collaboration
+
+1. **Integration with Ersilia Model Hub**: Package the model for inclusion in the Ersilia Model Hub
+2. **Documentation**: Expand documentation for different user personas (chemists, biologists, etc.)
+3. **Community Feedback**: Gather feedback from domain experts to refine the model
+
+### Domain Knowledge Enhancement
+
+1. **Further Reading**: Deeper study of medicinal chemistry and drug discovery literature to better understand the biological mechanisms of mutagenicity
+2. **Expert Consultation**: Collaborate with toxicologists and medicinal chemists to incorporate domain-specific knowledge
+3. **Structural Alerts**: Learn and implement known structural alerts for mutagenicity based on established toxicology principles
+
+> **Note**: As someone with limited experience in drug molecules and medicinal chemistry, I recognize that this model represents just a starting point. Significant improvements could be made with deeper domain knowledge and understanding of the underlying biological mechanisms of mutagenicity. Further reading and collaboration with domain experts would be essential for developing a truly robust and reliable prediction system for real-world drug discovery applications.

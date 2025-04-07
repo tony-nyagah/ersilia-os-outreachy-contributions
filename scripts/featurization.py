@@ -89,7 +89,11 @@ def featurize_file(file_path: str, ersilia_model_id: str, feature_name: str = No
     model_results = model_results.rename(columns={"input": "Drug"})
 
     # Rename outcome/score column if feature_name is provided and model returns a single result
-    if feature_name and len(model_results.columns) == 2 and any(col in model_results.columns for col in ["outcome", "score"]):
+    if (
+        feature_name
+        and len(model_results.columns) == 2
+        and any(col in model_results.columns for col in ["outcome", "score"])
+    ):
         column_to_rename = "outcome" if "outcome" in model_results.columns else "score"
         model_results = model_results.rename(columns={column_to_rename: feature_name})
         print(f"Renamed '{column_to_rename}' column to '{feature_name}'")
