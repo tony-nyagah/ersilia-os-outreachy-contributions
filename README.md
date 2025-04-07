@@ -1,4 +1,4 @@
-# Mutagenicity prediction project
+**Mutagenicity prediction project**
 
 This is a project created as part of contributing to the [Ersilia Open Source Initiative](https://www.ersilia.io/).
 
@@ -7,40 +7,38 @@ The goal is to develop a mutagenicity prediction model using the [Ersilia Model 
 I have chosen the [AMES mutagenicity dataset](https://tdcommons.ai/single_pred_tasks/tox#ames-mutagenicity) from Therapeutics Data Commons (TDC) because of the large size of the dataset.
 The Ames test is a widely used method to determine whether a chemical can cause mutations in DNA. This is crucial in drug development since compounds that damage DNA can lead to cancer or other severe health issues.
 
-## Table of Contents
-- [Mutagenicity prediction project](#mutagenicity-prediction-project)
-  - [Table of Contents](#table-of-contents)
-  - [Dataset and task description](#dataset-and-task-description)
-  - [Data acquisition](#data-acquisition)
-  - [Data Featurization](#data-featurization)
-  - [Data Modeling](#data-modeling)
-    - [Data Preprocessing](#data-preprocessing)
-    - [Exploratory Data Analysis](#exploratory-data-analysis)
-    - [Model Training](#model-training)
-    - [Model Evaluation](#model-evaluation)
-    - [Results](#results)
-      - [Model Comparison](#model-comparison)
-      - [Best Model Performance](#best-model-performance)
-    - [Key Findings](#key-findings)
-    - [Model Saving](#model-saving)
-  - [Model Interpretation](#model-interpretation)
-    - [Feature Importance](#feature-importance)
-      - [Random Forest Feature Importance](#random-forest-feature-importance)
-      - [XGBoost Feature Importance](#xgboost-feature-importance)
-      - [Feature Correlations](#feature-correlations)
-    - [Confusion Matrix](#confusion-matrix)
-    - [ROC Curves](#roc-curves)
-    - [SMOTE Impact](#smote-impact)
-      - [Class Distribution Before SMOTE](#class-distribution-before-smote)
-      - [Class Distribution After SMOTE](#class-distribution-after-smote)
-  - [Using the Model for Predictions](#using-the-model-for-predictions)
-  - [Future Work](#future-work)
-    - [Model Improvements](#model-improvements)
-    - [Validation and Testing](#validation-and-testing)
-    - [Interpretability](#interpretability)
-    - [Deployment](#deployment)
-    - [Collaboration](#collaboration)
-    - [Domain Knowledge Enhancement](#domain-knowledge-enhancement)
+**Table of Contents**
+- [Dataset and task description](#dataset-and-task-description)
+- [Data acquisition](#data-acquisition)
+- [Data Featurization](#data-featurization)
+- [Data Modeling](#data-modeling)
+  - [Data Preprocessing](#data-preprocessing)
+  - [Exploratory Data Analysis](#exploratory-data-analysis)
+  - [Model Training](#model-training)
+  - [Model Evaluation](#model-evaluation)
+  - [Results](#results)
+    - [Model Comparison](#model-comparison)
+    - [Best Model Performance](#best-model-performance)
+  - [Key Findings](#key-findings)
+  - [Model Saving](#model-saving)
+- [Model Interpretation](#model-interpretation)
+  - [Feature Importance](#feature-importance)
+    - [Random Forest Feature Importance](#random-forest-feature-importance)
+    - [XGBoost Feature Importance](#xgboost-feature-importance)
+    - [Feature Correlations](#feature-correlations)
+  - [Confusion Matrix](#confusion-matrix)
+  - [ROC Curves](#roc-curves)
+  - [SMOTE Impact](#smote-impact)
+    - [Class Distribution Before SMOTE](#class-distribution-before-smote)
+    - [Class Distribution After SMOTE](#class-distribution-after-smote)
+- [Using the Model for Predictions](#using-the-model-for-predictions)
+- [Future Work](#future-work)
+  - [Model Improvements](#model-improvements)
+  - [Validation and Testing](#validation-and-testing)
+  - [Interpretability](#interpretability)
+  - [Deployment](#deployment)
+  - [Collaboration](#collaboration)
+  - [Domain Knowledge Enhancement](#domain-knowledge-enhancement)
 
 ## Dataset and task description
 These are the dataset descriptions as provided by Therapeutics Data Commons (TDC):
